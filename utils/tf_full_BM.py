@@ -91,9 +91,9 @@ class Workspace(object):
             os.mkdir(path)
         return self.workspace + "/" + path
 
-    def fetch(self, url, workspace, directory, file_path, delete = False):
+    def fetch(self, url, workspace, directory_, file_path, delete = False):
         print "Fetching "+ url
-        path = workspace+"/"+directory
+        path = workspace+"/"+directory_
         cmd = "cd " + workspace
 
         # fetch tar.gz
@@ -103,7 +103,7 @@ class Workspace(object):
         # make temp
         if not os.path.exists(path + "_tmp"):
             os.mkdir(path + "_tmp")
-            cmd += " && tar xf " + file + " -C " + directory + "_tmp"
+            cmd += " && tar xf " + file + " -C " + directory_ + "_tmp"
 
         # do we clean?
         if delete:
@@ -112,7 +112,7 @@ class Workspace(object):
                 shutil.rmtree(path)
                 print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
                 #full cmd
-                full_cmd = "cd " + workspace + " && wget " + url +  " && tar xf " + file_path + " -C " + directory + "_tmp"
+                full_cmd = "cd " + workspace + " && wget " + url +  " && tar xf " + file_path + " -C " + directory_ + "_tmp"
                 print bcolors.WARNING + full_cmd + bcolors.ENDC
                 os.system(full_cmd)
         else:
