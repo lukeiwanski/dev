@@ -103,7 +103,7 @@ class Workspace(object):
         # make temp
         if not os.path.exists(path + "_tmp"):
             os.mkdir(path + "_tmp")
-            cmd += " && tar xf " + file + " -C " + directory_ + "_tmp"
+            cmd += " && tar xf " + file_path + " -C " + directory_ + "_tmp"
 
         # do we clean?
         if delete:
