@@ -56,7 +56,7 @@ class Repo(object):
 
 class Workspace(object):
     def __init__(self, computecpp_root, workspace, eigen_branch, tf_branch,
-                 dlbench_branch, benchmarks_branch):
+                 dlbench_branch, benchmarks_branch, package):
         self.now = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
         self.workspace = workspace
         self.mkdir_and_go(self.workspace)
@@ -64,8 +64,8 @@ class Workspace(object):
         self.log = self.mkdir("log")
         self.log = self.mkdir("log/" + self.now)
         self.computecpp = self.fetch(
-            "http://computecpp.codeplay.com/downloads/computecpp-ce/latest/Ubuntu-16.04-64bit.tar.gz",
-            workspace=self.tmp, directory_="computecpp", file_path="Ubuntu-16.04-64bit.tar.gz")
+            "http://computecpp.codeplay.com/downloads/computecpp-ce/latest/"+package+".tar.gz",
+            workspace=self.tmp, directory_="computecpp", file_path=package+".tar.gz")
         self.tensorflow = Repo("https://github.com/lukeiwanski/tensorflow.git", tf_branch, self.tmp)
         self.benchmarks = Repo("https://github.com/tensorflow/benchmarks.git",
                                benchmarks_branch, self.tmp)
@@ -243,6 +243,8 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-c", "--computecpp", dest="computecpp", default="/usr/local/computecpp",
                         help="Path to ComputeCpp root")
+    parser.add_argument("-p", "--package", dest="package", default="Ubuntu-16.04-64bit",
+                        help="Version of ComputeCpp to use")
     parser.add_argument("-w", "--workspace", dest="workspace", default=os.getenv("HOME")+"/autogen_workspace",
                         help="Where to create workspace")
     parser.add_argument("-e", "--eigen_branch", dest="eigen", default="Eigen-OpenCL-Optimised",
@@ -261,7 +263,7 @@ def main():
     workspace = Workspace(computecpp_root=args.computecpp,
                           workspace=args.workspace, eigen_branch=args.eigen,
                           tf_branch=args.tf, benchmarks_branch=args.benchmarks,
-                          dlbench_branch=args.dlbench)
+                          dlbench_branch=args.dlbench, package=args.package)
     workspace.setup()
     workspace.build_bench_eigen()
     workspace.build_install_tf()
