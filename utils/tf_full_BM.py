@@ -65,7 +65,7 @@ class Workspace(object):
         self.log = self.mkdir("log/" + self.now)
         self.computecpp = self.fetch(
             "http://computecpp.codeplay.com/downloads/computecpp-ce/latest/Ubuntu-16.04-64bit.tar.gz",
-            workspace=self.tmp, directory="computecpp", file_path="Ubuntu-16.04-64bit.tar.gz")
+            workspace=self.tmp, directory_="computecpp", file_path="Ubuntu-16.04-64bit.tar.gz")
         self.tensorflow = Repo("https://github.com/lukeiwanski/tensorflow.git", tf_branch, self.tmp)
         self.benchmarks = Repo("https://github.com/tensorflow/benchmarks.git",
                                benchmarks_branch, self.tmp)
