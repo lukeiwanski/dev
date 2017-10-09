@@ -1,13 +1,5 @@
 #!/usr/bin/python
 
-# build eigen
-# build tensorflow
-# install tensorflow
-
-# run eigen benchmarks
-# run dlbench
-# run tensorflow benchmarks
-
 import os
 import shutil
 import subprocess
@@ -17,8 +9,12 @@ import itertools
 import socket
 import argparse
 
+import csv
+import glob
+import pandas as pd
+import matplotlib
 
-class bcolors:
+class bcolors(object):
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
@@ -56,8 +52,9 @@ class Repo(object):
 
 class Workspace(object):
     def __init__(self, computecpp_root, workspace, eigen_branch, tf_branch,
-                 dlbench_branch, benchmarks_branch, package):
+                 dlbench_branch, benchmarks_branch, package, report):
         self.now = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
+        self.report = report
         self.workspace = workspace
         self.mkdir_and_go(self.workspace)
         self.tmp = self.mkdir("tmp")
@@ -146,12 +143,12 @@ class Workspace(object):
                              stdin=subprocess.PIPE)
         out, err = p.communicate()
         if p.returncode:
-            log_file = self.log+"/"+self.now+"-FAIL-" + log_modifier + ".log"
+            log_file = self.log+"/"+"FAIL-" + log_modifier + ".log"
             file_ = open(log_file, "w")
             print bcolors.FAIL + "FAIL: " + bcolors.ENDC + log_modifier + " " + log_file
             file_.write(err)
         else:
-            log_file = self.log+"/"+self.now+"-PASS-" + log_modifier + ".log"
+            log_file = self.log+"/"+"PASS-" + log_modifier + ".log"
             file_ = open(log_file, "w")
 
             print bcolors.OKBLUE + "PASS: " + bcolors.ENDC + log_modifier + " " + log_file
@@ -166,7 +163,7 @@ class Workspace(object):
         my_env["COMPUTECPP_PACKAGE_ROOT_DIR"] = self.computecpp
 
         cmd = "bash eigen_sycl_bench.sh"
-        self.execute(cmd=cmd, log_modifier="eigen", cwd=cwd, my_env=my_env)
+        self.execute(cmd=cmd, log_modifier=self.ip+"eigen", cwd=cwd, my_env=my_env)
         print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
 
     def build_install_tf(self):
@@ -223,7 +220,7 @@ class Workspace(object):
 
         for model, target in itertools.product(models, targets):
             file_name = self.ip+"_"+model+"_training_"+target
-            # inference
+            # training
             cmd = "python tf_cnn_benchmarks.py --batch_size=32 --num_batches=10 --device="+target+" --model="+model+" --data_format=NHWC --trace_file="+self.now+"_"+file_name+".js"
             self.execute(cmd=cmd, log_modifier=file_name, cwd=cwd, my_env=my_env)
 
@@ -235,9 +232,56 @@ class Workspace(object):
         my_env["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
         cmd = "python fcn5_mnist.py --use_dataset=False --data_dir="+ cwd + "/mnist_datasets"
-        self.execute(cmd=cmd, log_modifier="dlbench", cwd=cwd, my_env=my_env)
+        self.execute(cmd=cmd, log_modifier=self.ip+"dlbench", cwd=cwd, my_env=my_env)
 
+    def gen_csv_based_on_log(self):
+        file_name = self.report
+        file_exists = os.path.exists(file_name)
+        if file_exists:
+            append_write = 'a'
+        else:
+            append_write = 'w'
 
+        with open(file_name, append_write) as f:
+            writer = csv.writer(f)
+            header = ["date"]
+            path = os.path.join(self.log, "*PASS*.log")
+            row = [self.now]
+            for filename in glob.glob(path):
+                with open(filename) as f:
+                    col_name = ""
+                    result = ""
+                    found_file = False
+                    for line in f:
+                        if "Model:" in line:
+                            col_name += line.split(':')[-1].strip(" ").rstrip()
+                        if "Mode:" in line:
+                            col_name += "_" + line.split(':')[-1].strip(" ").rstrip()
+                        if "Batch size:" in line:
+                            col_name += "_" + line.split(':')[-1].rstrip().strip(" global")
+                        if "Devices:" in line:
+                            col_name += "_" + line.split('/')[-1].split(':')[0].strip(" ").rstrip()
+                        if "total images/sec:" in line:
+                            result += line.split(':')[-1].strip(" ").rstrip()
+                            found_file = True
+
+                    if col_name and found_file:
+                        header.append(col_name)
+                    if result and found_file:
+                        row.append(result)
+            if not file_exists and found_file:
+                writer.writerows([header])
+            if found_file:
+                writer.writerows([row])
+
+    def save_as_image(self):
+        matplotlib.use('Agg')
+        data = pd.read_csv(self.report, sep=',', index_col=0)
+        data.head()
+        data = data.sort_index(0, ascending=True)
+        data.plot()
+        #plt.show()
+        matplotlib.pyplot.savefig(self.now+'.png')
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -255,20 +299,23 @@ def main():
                         help="TensorFlow Benchmarks branch to use")
     parser.add_argument("-d", "--blbench_branch", dest="dlbench", default="data_sets",
                         help="DLBench branch to use")
-
+    parser.add_argument("-r", "--report", dest="report", default="report.csv",
+                        help="Where to save the CSV report file")
 
     args = parser.parse_args()
-    print(args)
 
     workspace = Workspace(computecpp_root=args.computecpp,
                           workspace=args.workspace, eigen_branch=args.eigen,
                           tf_branch=args.tf, benchmarks_branch=args.benchmarks,
-                          dlbench_branch=args.dlbench, package=args.package)
+                          dlbench_branch=args.dlbench, package=args.package,
+                          report=args.report)
     workspace.setup()
     workspace.build_bench_eigen()
     workspace.build_install_tf()
     workspace.run_benchmarks()
     workspace.run_dlbench()
+    workspace.gen_csv_based_on_log()
+    workspace.save_as_image()
 
 if __name__ == "__main__":
     main()
