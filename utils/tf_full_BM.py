@@ -37,18 +37,18 @@ class Repo(object):
         if not os.path.exists(self.WORKSPACE + "/" + self.DIRNAME):
             cmd += " && git clone " + self.URL
         cmd += " && cd " + self.DIRNAME + " && git checkout " + self.BRANCH + " && git pull"
-        print bcolors.WARNING + cmd + bcolors.ENDC
+        print(bcolors.WARNING + cmd + bcolors.ENDC)
         os.system(cmd)
-        print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
+        print(bcolors.OKBLUE + "DONE!" + bcolors.ENDC)
 
     def pull_hg(self):
         cmd = "cd " + self.WORKSPACE
         if not os.path.exists(self.WORKSPACE + "/" + self.DIRNAME):
             cmd += " && hg clone " + self.URL
         cmd += " && cd " + self.DIRNAME + " && hg up " + self.BRANCH + " && hg pull"
-        print bcolors.WARNING + cmd + bcolors.ENDC
+        print(bcolors.WARNING + cmd + bcolors.ENDC)
         os.system(cmd)
-        print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
+        print(bcolors.OKBLUE + "DONE!" + bcolors.ENDC)
 
 class Workspace(object):
     def __init__(self, computecpp_root, workspace, eigen_branch, tf_branch,
@@ -81,16 +81,16 @@ class Workspace(object):
     def mkdir(self, path, delete = False):
         if os.path.exists(path):
             if delete:
-                print path + " exists cleaning it..."
+                print(path + " exists cleaning it...")
                 shutil.rmtree(path)
-                print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
+                print(bcolors.OKBLUE + "DONE!" + bcolors.ENDC)
                 os.mkdir(path)
         else:
             os.mkdir(path)
         return self.workspace + "/" + path
 
     def fetch(self, url, workspace, directory_, file_path, delete = False):
-        print "Fetching "+ url
+        print("Fetching "+ url)
         path = workspace+"/"+directory_
         cmd = "cd " + workspace
 
@@ -106,12 +106,12 @@ class Workspace(object):
         # do we clean?
         if delete:
             if os.path.exists(path):
-                print path + " exists cleaning it..."
+                print(path + " exists cleaning it...")
                 shutil.rmtree(path)
-                print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
+                print(bcolors.OKBLUE + "DONE!" + bcolors.ENDC)
                 #full cmd
                 full_cmd = "cd " + workspace + " && wget " + url +  " && tar xf " + file_path + " -C " + directory_ + "_tmp"
-                print bcolors.WARNING + full_cmd + bcolors.ENDC
+                print(bcolors.WARNING + full_cmd + bcolors.ENDC)
                 os.system(full_cmd)
         else:
             # we have final file
@@ -122,14 +122,14 @@ class Workspace(object):
                 return path
             else:
                 # create _tmp
-                print bcolors.WARNING + cmd + bcolors.ENDC
+                print(bcolors.WARNING + cmd + bcolors.ENDC)
                 os.system(cmd)
 
         # mv *_tmp to dir
         cmd = "mv " + path + "_tmp/* " + path + " && rm -rf " + path + "_tmp" + " && chmod +x " + path+"/bin/*"
-        print bcolors.WARNING + cmd + bcolors.ENDC
+        print(bcolors.WARNING + cmd + bcolors.ENDC)
         os.system(cmd)
-        print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
+        print(bcolors.OKBLUE + "DONE!" + bcolors.ENDC)
         return path
 
 
@@ -138,37 +138,39 @@ class Workspace(object):
         os.chdir(path)
 
     def execute(self, cmd, log_modifier, cwd = "", my_env = []):
-        print bcolors.WARNING + cmd + bcolors.ENDC
-        p = subprocess.Popen(cmd, env=my_env, cwd=cwd, shell=True,
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             stdin=subprocess.PIPE)
-        out, err = p.communicate()
-        if p.returncode:
-            log_file = self.log+"/"+"FAIL-" + log_modifier + ".log"
-            file_ = open(log_file, "w")
-            print bcolors.FAIL + "FAIL: " + bcolors.ENDC + log_modifier + " " + log_file
-            file_.write(err)
-        else:
-            log_file = self.log+"/"+"PASS-" + log_modifier + ".log"
-            file_ = open(log_file, "w")
+        print(bcolors.WARNING + cmd + bcolors.ENDC)
 
-            print bcolors.OKBLUE + "PASS: " + bcolors.ENDC + log_modifier + " " + log_file
-            file_.write(out)
-        file_.close()
+        fail_log_file_path = self.log+"/"+"FAIL-" + log_modifier + ".log"
+        fail_log_file = open(fail_log_file_path, "w")
+
+        pass_log_file_path = self.log+"/"+"PASS-" + log_modifier + ".log"
+        pass_log_file = open(pass_log_file_path, "w")
+
+        p = subprocess.Popen(cmd, env=my_env, cwd=cwd, shell=True,
+                             stdout=pass_log_file, stderr=fail_log_file)
+        p.communicate()
+        fail_log_file.close()
+        pass_log_file.close()
+
+        if p.returncode == 0:
+            print(bcolors.OKBLUE + "PASS: " + bcolors.ENDC + log_modifier + " " + pass_log_file_path)
+        else:
+            print(bcolors.FAIL + "FAIL: " + bcolors.ENDC + log_modifier + " " + fail_log_file_path)
+
         return p.returncode
 
     def build_bench_eigen(self):
-        print "Compiling and Running Eigen Benchmarks"
+        print("Compiling and Running Eigen Benchmarks")
         cwd = self.tmp + "/" + self.eigen.DIRNAME+"/bench/tensors"
         my_env = os.environ
         my_env["COMPUTECPP_PACKAGE_ROOT_DIR"] = self.computecpp
 
         cmd = "bash eigen_sycl_bench.sh"
         self.execute(cmd=cmd, log_modifier=self.ip+"eigen", cwd=cwd, my_env=my_env)
-        print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
+        print(bcolors.OKBLUE + "DONE!" + bcolors.ENDC)
 
     def build_install_tf(self):
-        print "Compiling and Installing TF"
+        print("Compiling and Installing TF")
         cwd = self.tmp + "/" + self.tensorflow.DIRNAME
         my_env = os.environ
         my_env["TF_NEED_OPENCL"] = "1"
@@ -193,17 +195,17 @@ class Workspace(object):
             cmd = "pip install --user " + self.workspace + "/" + self.tmp + "/tensorflow_pkg/tensorflow-*.whl"
             ret = self.execute(cmd=cmd, log_modifier="tf_install_pip", cwd=cwd, my_env=my_env)
             if ret:
-                print bcolors.FAIL + "FAIL!" + bcolors.ENDC
+                print(bcolors.FAIL + "FAIL!" + bcolors.ENDC)
                 return
 
         else:
-            print bcolors.FAIL + "FAIL!" + bcolors.ENDC
+            print(bcolors.FAIL + "FAIL!" + bcolors.ENDC)
             return
 
-        print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
+        print(bcolors.OKBLUE + "DONE!" + bcolors.ENDC)
 
     def run_benchmarks(self):
-        print "Running TF benchmarks"
+        print("Running TF benchmarks")
         cwd = self.tmp + "/" + self.benchmarks.DIRNAME+"/scripts/tf_cnn_benchmarks"
         my_env = os.environ
         my_env["LD_LIBRARY_PATH"] = self.computecpp+"/lib"
@@ -226,7 +228,7 @@ class Workspace(object):
             self.execute(cmd=cmd, log_modifier=file_name, cwd=cwd, my_env=my_env)
 
     def run_dlbench(self):
-        print "Running dlbench"
+        print("Running dlbench")
         cwd = self.tmp + "/" + self.dlbench.DIRNAME+"/tools/tensorflow/fc"
         my_env = os.environ
         my_env["LD_LIBRARY_PATH"] = self.computecpp+"/lib"
