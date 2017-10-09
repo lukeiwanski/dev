@@ -147,7 +147,8 @@ class Workspace(object):
         pass_log_file = open(pass_log_file_path, "w")
 
         p = subprocess.Popen(cmd, env=my_env, cwd=cwd, shell=True,
-                             stdout=pass_log_file, stderr=fail_log_file)
+                             stdout=pass_log_file, stderr=fail_log_file,
+                             stdin=subprocess.PIPE)
         p.communicate()
         fail_log_file.close()
         pass_log_file.close()
