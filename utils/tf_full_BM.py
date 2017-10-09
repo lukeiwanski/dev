@@ -8,6 +8,7 @@ import time
 import itertools
 import socket
 import argparse
+import sys
 
 import csv
 import glob
@@ -197,11 +198,11 @@ class Workspace(object):
             ret = self.execute(cmd=cmd, log_modifier="tf_install_pip", cwd=cwd, my_env=my_env)
             if ret:
                 print(bcolors.FAIL + "FAIL!" + bcolors.ENDC)
-                return
+                sys.exit(0)
 
         else:
             print(bcolors.FAIL + "FAIL!" + bcolors.ENDC)
-            return
+            sys.exit(0)
 
         print(bcolors.OKBLUE + "DONE!" + bcolors.ENDC)
 
