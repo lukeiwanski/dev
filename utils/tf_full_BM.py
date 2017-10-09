@@ -52,7 +52,8 @@ class Repo(object):
 
 class Workspace(object):
     def __init__(self, computecpp_root, workspace, eigen_branch, tf_branch,
-                 dlbench_branch, benchmarks_branch, package, report):
+                 dlbench_branch, benchmarks_branch, package, report, tf_build_options):
+        self.tf_build_options = tf_build_options
         self.now = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
         self.report = report
         self.workspace = workspace
@@ -178,7 +179,7 @@ class Workspace(object):
         cmd = "bash configure yes"
         ret = self.execute(cmd=cmd, log_modifier="tf_configure", cwd=cwd, my_env=my_env)
 
-        cmd = "bazel build -c opt --copt=-msse4.1 --copt=-msse4.1 --copt=-mavx --copt=-mavx2 --copt=-mfma --copt -Wno-unused-command-line-argument --copt -Wno-duplicate-decl-specifier --config=sycl //tensorflow/tools/pip_package:build_pip_package"
+        cmd = "bazel build -c opt --copt=-msse4.1 --copt=-msse4.1 --copt=-mavx --copt=-mavx2 --copt=-mfma --copt -Wno-unused-command-line-argument --copt -Wno-duplicate-decl-specifier --config=sycl " + self.tf_build_options + " //tensorflow/tools/pip_package:build_pip_package"
         ret &= self.execute(cmd=cmd, log_modifier="tf_build", cwd=cwd, my_env=my_env)
 
         if not ret:
@@ -301,6 +302,8 @@ def main():
                         help="DLBench branch to use")
     parser.add_argument("-r", "--report", dest="report", default="report.csv",
                         help="Where to save the CSV report file")
+    parser.add_argument("-x", "--tf_build_options", dest="tf_build_options", default=" ",
+                        help="Additional options that will be passed to TF bazel build command")
 
     args = parser.parse_args()
 
@@ -308,7 +311,7 @@ def main():
                           workspace=args.workspace, eigen_branch=args.eigen,
                           tf_branch=args.tf, benchmarks_branch=args.benchmarks,
                           dlbench_branch=args.dlbench, package=args.package,
-                          report=args.report)
+                          report=args.report, tf_build_options=args.tf_build_options)
     workspace.setup()
     workspace.build_bench_eigen()
     workspace.build_install_tf()
