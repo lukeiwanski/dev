@@ -36,7 +36,7 @@ class Repo(object):
         cmd = "cd " + self.WORKSPACE
         if not os.path.exists(self.WORKSPACE + "/" + self.DIRNAME):
             cmd += " && git clone " + self.URL
-        cmd += " && cd " + self.DIRNAME + " && git checkout " + self.BRANCH
+        cmd += " && cd " + self.DIRNAME + " && git checkout " + self.BRANCH + " && git pull"
         print bcolors.WARNING + cmd + bcolors.ENDC
         os.system(cmd)
         print bcolors.OKBLUE + "DONE!" + bcolors.ENDC
@@ -176,11 +176,8 @@ class Workspace(object):
         my_env["HOST_C_COMPILER"] = "/usr/bin/gcc"
         my_env["COMPUTECPP_TOOLKIT_PATH"] = self.computecpp
 
-        cmd = "git pull"
-        ret = self.execute(cmd=cmd, log_modifier="tf_pull", cwd=cwd, my_env=my_env)
-
         cmd = "bash configure yes"
-        ret &= self.execute(cmd=cmd, log_modifier="tf_configure", cwd=cwd, my_env=my_env)
+        ret = self.execute(cmd=cmd, log_modifier="tf_configure", cwd=cwd, my_env=my_env)
 
         cmd = "bazel build -c opt --copt=-msse4.1 --copt=-msse4.1 --copt=-mavx --copt=-mavx2 --copt=-mfma --copt -Wno-unused-command-line-argument --copt -Wno-duplicate-decl-specifier --config=sycl " + self.tf_build_options + " //tensorflow/tools/pip_package:build_pip_package"
         ret &= self.execute(cmd=cmd, log_modifier="tf_build", cwd=cwd, my_env=my_env)
