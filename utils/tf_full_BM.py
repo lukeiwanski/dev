@@ -142,19 +142,25 @@ class Workspace(object):
         print(bcolors.WARNING + cmd + bcolors.ENDC)
 
         fail_log_file_path = self.log+"/"+"FAIL-" + log_modifier + ".log"
-        fail_log_file = open(fail_log_file_path, "w")
-        fail_log_file.write('exec ${PAGER:-/usr/bin/less} "$0" || exit 1 ')
+        fail_log_file = open(fail_log_file_path, "a+")
+        fail_log_file.write('exec ${PAGER:-/usr/bin/less} "$0" || exit 1 \n')
+        fail_log_file.close()
+        fail_log_file = open(fail_log_file_path, "a+")
 
         pass_log_file_path = self.log+"/"+"PASS-" + log_modifier + ".log"
-        pass_log_file = open(pass_log_file_path, "w")
-        pass_log_file.write('exec ${PAGER:-/usr/bin/less} "$0" || exit 1 ')
+        pass_log_file = open(pass_log_file_path, "a+")
+        pass_log_file.write('exec ${PAGER:-/usr/bin/less} "$0" || exit 1 \n')
+        pass_log_file.close()
+        pass_log_file = open(pass_log_file_path, "a+")
 
         p = subprocess.Popen(cmd, env=my_env, cwd=cwd, shell=True,
                              stdout=pass_log_file, stderr=fail_log_file,
                              stdin=subprocess.PIPE)
         p.communicate()
         fail_log_file.close()
+        os.chmod(fail_log_file_path, 0755)
         pass_log_file.close()
+        os.chmod(pass_log_file_path, 0755)
 
         if p.returncode == 0:
             print(bcolors.OKBLUE + "PASS: " + bcolors.ENDC + log_modifier + " " + pass_log_file_path)
@@ -238,8 +244,12 @@ class Workspace(object):
         my_env["LD_LIBRARY_PATH"] = self.computecpp+"/lib"
         my_env["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-        cmd = "python fcn5_mnist.py --use_dataset=False --data_dir="+ cwd + "/mnist_datasets"
-        self.execute(cmd=cmd, log_modifier=self.ip+"dlbench", cwd=cwd, my_env=my_env)
+        cmd = "python fcn5_mnist.py --use_dataset=False --epochs=1 --log_device_placement=True --data_dir="+ cwd + "/mnist_datasets"
+        self.execute(cmd=cmd, log_modifier=self.ip+"_dlbench_gpu", cwd=cwd, my_env=my_env)
+
+        cmd = "python fcn5_mnist.py --use_dataset=False --epochs=1 --log_device_placement=True --device_id=-1 --data_dir="+ cwd + "/mnist_datasets"
+        self.execute(cmd=cmd, log_modifier=self.ip+"_dlbench_cpu", cwd=cwd, my_env=my_env)
+
 
     def gen_csv_based_on_log(self):
         file_name = self.report
@@ -268,8 +278,21 @@ class Workspace(object):
                             col_name += "_" + line.split(':')[-1].rstrip().strip(" global")
                         if "Devices:" in line:
                             col_name += "_" + line.split('/')[-1].split(':')[0].strip(" ").rstrip()
-                        if "total images/sec:" in line:
+                        # sometimes total images / s is reported as 0
+                        # use 10 images / sec to make sure we have valid value
+                        if "10  images/sec:" in line:
                             result += line.split(':')[-1].strip(" ").rstrip()
+                            found_file = True
+                        # add dlbench
+                        if "epoch_info:" in line:
+                            col_name += "dlbench"
+                        if "/device:SYCL:0 -> id: 0" in line:
+                            col_name += "SYCL_"
+                        if "/device:GPU:0 -> id: 0" in line:
+                            col_name += "GPU_"
+                        # take value from step 10
+                        if "step 10, loss " in line:
+                            result += line.split('(')[1].split(" ")[0].strip(" ").rstrip()
                             found_file = True
 
                     if col_name and found_file:
