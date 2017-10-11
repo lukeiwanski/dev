@@ -54,7 +54,7 @@ class Workspace(object):
                  dlbench_branch, benchmarks_branch, package, report, tf_build_options,
                  webpage):
         self.tf_build_options = tf_build_options
-        self.now = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d:%H:%M:%S')
+        self.now = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
         self.report = report
         self.workspace = workspace
         self.webpage =webpage
@@ -298,7 +298,7 @@ class Workspace(object):
         file_exists = os.path.exists(self.webpage)
         if not file_exists:
             f = open(self.webpage, "w")
-            f.write("<link href='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.min.css' rel='stylesheet'><script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.js' charset='utf-8'></script><script src='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.js'></script><div id='chart'></div><script>var chart = c3.generate({data:{x:'date',xFormat:'%Y-%m-%d:%H:%M:%S',url:'"+self.report+"',type:'line'},bindto:'#chart',axis:{x:{type:'timeseries',tick:{format:'%Y-%m-%d %H:%M:%S'}}}});</script>")
+            f.write("<link href='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.min.css' rel='stylesheet'><script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.js' charset='utf-8'></script><script src='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.js'></script><div id='chart'></div><script>var chart = c3.generate({data:{x:'date',xFormat:'%Y-%m-%d',url:'"+self.report+"',type:'line'},bindto:'#chart',axis:{x:{type:'timeseries',tick:{format:'%Y-%m-%d'}}}});</script>")
             f.close()
 
 def main():
