@@ -12,8 +12,6 @@ import sys
 
 import csv
 import glob
-import pandas as pd
-import matplotlib
 
 class bcolors(object):
     HEADER = '\033[95m'
@@ -53,11 +51,13 @@ class Repo(object):
 
 class Workspace(object):
     def __init__(self, computecpp_root, workspace, eigen_branch, tf_branch,
-                 dlbench_branch, benchmarks_branch, package, report, tf_build_options):
+                 dlbench_branch, benchmarks_branch, package, report, tf_build_options,
+                 webpage):
         self.tf_build_options = tf_build_options
-        self.now = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S')
+        self.now = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d:%H:%M:%S')
         self.report = report
         self.workspace = workspace
+        self.webpage =webpage
         self.mkdir_and_go(self.workspace)
         self.tmp = self.mkdir("tmp")
         self.log = self.mkdir("log")
@@ -280,45 +280,33 @@ class Workspace(object):
                             col_name += "_" + line.split('/')[-1].split(':')[0].strip(" ").rstrip()
                         # sometimes total images / s is reported as 0
                         # use 10 images / sec to make sure we have valid value
-                        if "10  images/sec:" in line:
-                            result += line.split(':')[-1].strip(" ").rstrip()
-                            found_file = True
-                        # add dlbench
-                        if "epoch_info:" in line:
-                            col_name += "dlbench"
-                        if "/device:SYCL:0 -> id: 0" in line:
-                            col_name += "SYCL_"
-                        if "/device:GPU:0 -> id: 0" in line:
-                            col_name += "GPU_"
-                        # take value from step 10
-                        if "step 10, loss " in line:
-                            result += line.split('(')[1].split(" ")[0].strip(" ").rstrip()
+                        if "total images/sec:" in line:
+                            result += line.split(':')[-1].rstrip()
                             found_file = True
 
                     if col_name and found_file:
                         header.append(col_name)
                     if result and found_file:
                         row.append(result)
-            if not file_exists and found_file:
+
+            if not file_exists:
                 writer.writerows([header])
             if found_file:
                 writer.writerows([row])
 
-    def save_as_image(self):
-        matplotlib.use('Agg')
-        data = pd.read_csv(self.report, sep=',', index_col=0)
-        data.head()
-        data = data.sort_index(0, ascending=True)
-        data.plot()
-        #plt.show()
-        matplotlib.pyplot.savefig(self.now+'.png')
+    def gen_webpage(self):
+        file_exists = os.path.exists(self.webpage)
+        if not file_exists:
+            f = open(self.webpage, "w")
+            f.write("<link href='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.min.css' rel='stylesheet'><script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.js' charset='utf-8'></script><script src='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.js'></script><div id='chart'></div><script>var chart = c3.generate({data:{x:'date',xFormat:'%Y-%m-%d:%H:%M:%S',url:'"+self.report+"',type:'line'},bindto:'#chart',axis:{x:{type:'timeseries',tick:{format:'%Y-%m-%d %H:%M:%S'}}}});</script>")
+            f.close()
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-c", "--computecpp", dest="computecpp", default="/usr/local/computecpp",
+    parser.add_argument("-c", "--computecpp", dest="computecpp", default=os.getenv("HOME")+"/autogen_workspace"+"/tmp/computecpp",
                         help="Path to ComputeCpp root")
     parser.add_argument("-p", "--package", dest="package", default="Ubuntu-16.04-64bit",
-                        help="Version of ComputeCpp to use")
+                        help="Version of ComputeCpp to download")
     parser.add_argument("-w", "--workspace", dest="workspace", default=os.getenv("HOME")+"/autogen_workspace",
                         help="Where to create workspace")
     parser.add_argument("-e", "--eigen_branch", dest="eigen", default="Eigen-OpenCL-Optimised",
@@ -329,8 +317,10 @@ def main():
                         help="TensorFlow Benchmarks branch to use")
     parser.add_argument("-d", "--blbench_branch", dest="dlbench", default="data_sets",
                         help="DLBench branch to use")
-    parser.add_argument("-r", "--report", dest="report", default="report.csv",
-                        help="Where to save the CSV report file")
+    parser.add_argument("-r", "--csv", dest="report", default="report.csv",
+                        help="CSV report file name")
+    parser.add_argument("-l", "--html", dest="webpage", default="index.html",
+                        help="Generated WebPage name")
     parser.add_argument("-x", "--tf_build_options", dest="tf_build_options", default=" ",
                         help="Additional options that will be passed to TF bazel build command")
 
@@ -340,14 +330,15 @@ def main():
                           workspace=args.workspace, eigen_branch=args.eigen,
                           tf_branch=args.tf, benchmarks_branch=args.benchmarks,
                           dlbench_branch=args.dlbench, package=args.package,
-                          report=args.report, tf_build_options=args.tf_build_options)
+                          report=args.report, tf_build_options=args.tf_build_options,
+                          webpage=args.webpage)
     workspace.setup()
-    workspace.build_bench_eigen()
+#    workspace.build_bench_eigen()
     workspace.build_install_tf()
     workspace.run_benchmarks()
-    workspace.run_dlbench()
+#    workspace.run_dlbench()
     workspace.gen_csv_based_on_log()
-    workspace.save_as_image()
+    workspace.gen_webpage()
 
 if __name__ == "__main__":
     main()
