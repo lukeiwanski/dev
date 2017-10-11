@@ -142,13 +142,13 @@ class Workspace(object):
         print(bcolors.WARNING + cmd + bcolors.ENDC)
 
         fail_log_file_path = self.log+"/"+"FAIL-" + log_modifier + ".log"
-        fail_log_file = open(fail_log_file_path, "a+")
+        fail_log_file = open(fail_log_file_path, "w")
         fail_log_file.write('exec ${PAGER:-/usr/bin/less} "$0" || exit 1 \n')
         fail_log_file.close()
         fail_log_file = open(fail_log_file_path, "a+")
 
         pass_log_file_path = self.log+"/"+"PASS-" + log_modifier + ".log"
-        pass_log_file = open(pass_log_file_path, "a+")
+        pass_log_file = open(pass_log_file_path, "w")
         pass_log_file.write('exec ${PAGER:-/usr/bin/less} "$0" || exit 1 \n')
         pass_log_file.close()
         pass_log_file = open(pass_log_file_path, "a+")
