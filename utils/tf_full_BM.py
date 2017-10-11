@@ -35,7 +35,7 @@ class Repo(object):
         cmd = "cd " + self.WORKSPACE
         if not os.path.exists(self.WORKSPACE + "/" + self.DIRNAME):
             cmd += " && git clone " + self.URL
-        cmd += " && cd " + self.DIRNAME + " && git pull && git checkout " + self.BRANCH
+        cmd += " && cd " + self.DIRNAME + " && git reset --hard HEAD && git pull && git checkout " + self.BRANCH + " && git pull"
         print(bcolors.WARNING + cmd + bcolors.ENDC)
         os.system(cmd)
         print(bcolors.OKBLUE + "DONE!" + bcolors.ENDC)
