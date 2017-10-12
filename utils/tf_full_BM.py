@@ -13,6 +13,7 @@ import sys
 import csv
 import glob
 import numpy as np
+import pandas as pd
 
 class bcolors(object):
     HEADER = '\033[95m'
@@ -295,10 +296,24 @@ class Workspace(object):
                 writer.writerows([row])
 
     def gen_webpage(self):
+        filename = "report.csv"
+        code = "<link href='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.min.css' rel='stylesheet'><script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.js' charset='utf-8'></script><script src='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.js'></script><div id='chart'></div><script>var chart = c3.generate({data:{x:'date',xFormat:'%Y-%m-%d',url:'"+self.report+"',type:'scatter'},tooltip:{grouped:false},bindto:'#chart',axis:{y:{show:true,max:100,min:0,ticks:5,padding:{top:1,bottom:0},},x:{type:'timeseries',tick:{format:'%Y-%m-%d'}}}});</script>"
+
+        for x in range(1, 17):
+            a = [np.genfromtxt(filename, usecols=[0], delimiter=',', dtype=np.unicode_)]
+            b = [np.genfromtxt(filename, usecols=[x], delimiter=',', dtype=np.unicode_)]
+            m_ = b[0][1:]
+            max_ = np.amax(np.asarray(m_, dtype=np.float32)) * 2
+
+            out = np.transpose(np.concatenate((a, b), axis=0))
+            df = pd.DataFrame(out)
+            df.to_csv(str(x) + ".csv", header=None, index=False)
+            code +="<div id='c"+str(x)+"'></div><script>var chart = c3.generate({data:{x:'date',xFormat:'%Y-%m-%d',url:'"+str(x)+".csv',type:'line'},tooltip:{grouped:false},bindto:'#c"+str(x)+"',axis:{y: { show: true, max:"+str(max_)+", min:0, ticks : 5,padding: {top:1, bottom:0},}, x:{type:'timeseries',tick:{format:'%Y-%m-%d'}}}});</script>"
+
         file_exists = os.path.exists(self.webpage)
         if not file_exists:
             f = open(self.webpage, "w")
-            f.write("<link href='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.min.css' rel='stylesheet'><script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.js' charset='utf-8'></script><script src='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.js'></script><div id='chart'></div><script>var chart = c3.generate({data:{x:'date',xFormat:'%Y-%m-%d',url:'"+self.report+"',type:'line'},tooltip:{grouped:false},bindto:'#chart',axis:{x:{type:'timeseries',tick:{format:'%Y-%m-%d'}}}});</script>")
+            f.write(code)
             f.close()
 
 def main():
