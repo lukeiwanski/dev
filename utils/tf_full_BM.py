@@ -12,6 +12,7 @@ import sys
 
 import csv
 import glob
+import numpy as np
 
 class bcolors(object):
     HEADER = '\033[95m'
@@ -267,8 +268,7 @@ class Workspace(object):
             for filename in glob.glob(path):
                 with open(filename) as f:
                     col_name = ""
-                    result = ""
-                    found_file = False
+                    imgs_sec = []
                     for line in f:
                         if "Model:" in line:
                             col_name += line.split(':')[-1].strip(" ").rstrip()
@@ -279,19 +279,19 @@ class Workspace(object):
                         if "Devices:" in line:
                             col_name += "_" + line.split('/')[-1].split(':')[0].strip(" ").rstrip()
                         # sometimes total images / s is reported as 0
-                        # use 10 images / sec to make sure we have valid value
-                        if "total images/sec:" in line:
-                            result += line.split(':')[-1].rstrip()
-                            found_file = True
+                        # therefore we get all images/sec and choosing the best
+                        if "images/sec:" in line:
+                            x = line.split(':')[-1].split(' ')[1].rstrip()
+                            imgs_sec.append(x)
 
-                    if col_name and found_file:
+                    if col_name and imgs_sec:
                         header.append(col_name)
-                    if result and found_file:
-                        row.append(result)
+                    if imgs_sec:
+                        row.append(np.amax(np.array(imgs_sec).astype(np.float)))
 
             if not file_exists:
                 writer.writerows([header])
-            if found_file:
+            if imgs_sec:
                 writer.writerows([row])
 
     def gen_webpage(self):
