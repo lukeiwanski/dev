@@ -304,10 +304,10 @@ class Workspace(object):
 
         # sorted columns
         b = sorted(np.transpose(np.genfromtxt(filename, delimiter=',', dtype=np.unicode_))[1:], key=lambda tup: tup[0])
-        sort = b[1:]
+        sort = b[:]
         #
 
-        for x in range(len(b) / 2 - 1):
+        for x in range((len(b)) / 2 ):
             m1_ = sort[2*x][1:]
             max1_ = np.amax(np.asarray(m1_, dtype=np.float32)) * 2
 
