@@ -64,9 +64,12 @@ class Workspace(object):
         self.tmp = self.mkdir("tmp")
         self.log = self.mkdir("log")
         self.log = self.mkdir("log/" + self.now)
-        self.computecpp = self.fetch(
-            "http://computecpp.codeplay.com/downloads/computecpp-ce/latest/"+package+".tar.gz",
-            workspace=self.tmp, directory_="computecpp", file_path=package+".tar.gz")
+        if not os.path.exists(computecpp_root):
+            self.computecpp = self.fetch(
+                "http://computecpp.codeplay.com/downloads/computecpp-ce/latest/"+package+".tar.gz",
+                workspace=self.tmp, directory_="computecpp", file_path=package+".tar.gz")
+        else:
+            self.computecpp = computecpp_root
         self.tensorflow = Repo("https://github.com/lukeiwanski/tensorflow.git", tf_branch, self.tmp)
         self.benchmarks = Repo("https://github.com/tensorflow/benchmarks.git",
                                benchmarks_branch, self.tmp)
