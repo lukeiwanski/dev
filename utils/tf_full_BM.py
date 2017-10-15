@@ -192,10 +192,10 @@ class Workspace(object):
         my_env["COMPUTECPP_TOOLKIT_PATH"] = self.computecpp
 
         cmd = "bash configure yes"
-        ret = self.execute(cmd=cmd, log_modifier="tf_configure", cwd=cwd, my_env=my_env)
+        ret = self.execute(cmd=cmd, log_modifier="tf_configure", cwd=cwd, my_env=my_env)[0]
 
         cmd = "bazel build -c opt --copt=-msse4.1 --copt=-msse4.1 --copt=-mavx --copt=-mavx2 --copt=-mfma --copt -Wno-unused-command-line-argument --copt -Wno-duplicate-decl-specifier --config=sycl " + self.tf_build_options + " //tensorflow/tools/pip_package:build_pip_package"
-        ret &= self.execute(cmd=cmd, log_modifier="tf_build", cwd=cwd, my_env=my_env)
+        ret &= self.execute(cmd=cmd, log_modifier="tf_build", cwd=cwd, my_env=my_env)[0]
 
         if not ret:
             cmd = "bazel-bin/tensorflow/tools/pip_package/build_pip_package " + self.workspace + "/" + self.tmp + "/tensorflow_pkg"
@@ -206,7 +206,7 @@ class Workspace(object):
             self.execute(cmd=cmd, log_modifier="tf_uninstall_pip", cwd=cwd, my_env=my_env)
 
             cmd = "pip install --user " + self.workspace + "/" + self.tmp + "/tensorflow_pkg/tensorflow-*.whl"
-            ret = self.execute(cmd=cmd, log_modifier="tf_install_pip", cwd=cwd, my_env=my_env)
+            ret = self.execute(cmd=cmd, log_modifier="tf_install_pip", cwd=cwd, my_env=my_env)[0]
             if ret:
                 print(bcolors.FAIL + "FAIL!" + bcolors.ENDC)
                 sys.exit(0)
