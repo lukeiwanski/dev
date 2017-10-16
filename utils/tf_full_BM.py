@@ -231,13 +231,13 @@ class Workspace(object):
         for model, target in itertools.product(models, targets):
             file_name = self.ip+"_"+model+"_inference_"+target
             # inference
-            cmd = "python tf_cnn_benchmarks.py --num_batches=10 --device="+target+" --batch_size=1 --forward_only=true --model="+model+" --data_format=NHWC --trace_file="+self.now+"_"+file_name+".js"
+            cmd = "python tf_cnn_benchmarks.py --num_batches=10 --device="+target+" --batch_size=1 --forward_only=true --model="+model+" --data_format=NHWC --trace_file="+self.workspace_version+"_"+file_name+".json"
             self.execute(cmd=cmd, log_modifier=file_name, cwd=cwd, my_env=my_env)
 
         for model, target in itertools.product(models, targets):
             file_name = self.ip+"_"+model+"_training_"+target
             # training
-            cmd = "python tf_cnn_benchmarks.py --batch_size=32 --num_batches=10 --device="+target+" --model="+model+" --data_format=NHWC --trace_file="+self.now+"_"+file_name+".js"
+            cmd = "python tf_cnn_benchmarks.py --batch_size=32 --num_batches=10 --device="+target+" --model="+model+" --data_format=NHWC --trace_file="+self.workspace_version+"_"+file_name+".json"
             self.execute(cmd=cmd, log_modifier=file_name, cwd=cwd, my_env=my_env)
 
     def gen_csv_based_on_log(self):
