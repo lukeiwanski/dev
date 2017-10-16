@@ -298,7 +298,7 @@ class Workspace(object):
             max1_ = np.amax(np.asarray(m1_, dtype=np.float32)) * 2
 
             m2_ = sort[2*x+1][1:]
-            max2_ = np.amax(np.asarray(m1_, dtype=np.float32)) * 2
+            max2_ = np.amax(np.asarray(m2_, dtype=np.float32)) * 2
 
             max1_ = np.maximum(max1_, max2_)
 
