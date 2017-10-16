@@ -279,7 +279,7 @@ class Workspace(object):
 
             if not file_exists:
                 writer.writerows([header])
-            if imgs_sec:
+            if row:
                 writer.writerows([row])
 
     def gen_webpage(self):
