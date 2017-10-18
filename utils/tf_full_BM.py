@@ -52,7 +52,7 @@ class Repo(object):
 
 class Workspace(object):
     def __init__(self, computecpp_root, workspace, tf_branch, benchmarks_branch,
-                 package, report, tf_build_options, webpage):
+                 package, report, tf_build_options, webpage, save_traces):
         self.tf_build_options = tf_build_options
         self.now = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
         self.report = report
@@ -62,6 +62,8 @@ class Workspace(object):
         self.tmp = self.mkdir("tmp")
         self.log = self.mkdir("log")
         self.log = self.mkdir("log/" + self.now)
+        self.save_traces = save_traces
+
         if not os.path.exists(computecpp_root):
             self.computecpp = self.fetch(
                 "http://computecpp.codeplay.com/downloads/computecpp-ce/latest/"+package+".tar.gz",
@@ -231,13 +233,19 @@ class Workspace(object):
         for model, target in itertools.product(models, targets):
             file_name = self.ip+"_"+model+"_inference_"+target
             # inference
-            cmd = "python tf_cnn_benchmarks.py --num_batches=10 --device="+target+" --batch_size=1 --forward_only=true --model="+model+" --data_format=NHWC --trace_file="+self.workspace_version+"_"+file_name+".json"
+            cmd = "python tf_cnn_benchmarks.py --num_batches=10 --device="+target+" --batch_size=1 --forward_only=true --model="+model+" --data_format=NHWC"
+            if self.save_traces:
+                cmd += " --trace_file="+self.workspace_version+"_"+file_name+".json"
+
             self.execute(cmd=cmd, log_modifier=file_name, cwd=cwd, my_env=my_env)
 
         for model, target in itertools.product(models, targets):
             file_name = self.ip+"_"+model+"_training_"+target
             # training
-            cmd = "python tf_cnn_benchmarks.py --batch_size=32 --num_batches=10 --device="+target+" --model="+model+" --data_format=NHWC --trace_file="+self.workspace_version+"_"+file_name+".json"
+            cmd = "python tf_cnn_benchmarks.py --batch_size=32 --num_batches=10 --device="+target+" --model="+model+" --data_format=NHWC"
+            if self.save_traces:
+                cmd += " --trace_file="+self.workspace_version+"_"+file_name+".json"
+
             self.execute(cmd=cmd, log_modifier=file_name, cwd=cwd, my_env=my_env)
 
     def gen_csv_based_on_log(self):
@@ -331,6 +339,8 @@ def main():
                         help="Generated WebPage name")
     parser.add_argument("-x", "--tf_build_options", dest="tf_build_options", default=" ",
                         help="Additional options that will be passed to TF bazel build command")
+    parser.add_argument("-s", "--save_traces", dest="save_traces", default=False,
+                        help="If set to true traces will be generated")
 
     args = parser.parse_args()
 
@@ -341,7 +351,8 @@ def main():
                           package=args.package,
                           report=args.report,
                           tf_build_options=args.tf_build_options,
-                          webpage=args.webpage)
+                          webpage=args.webpage,
+                          save_traces = args.save_traces)
     workspace.setup()
     workspace.build_install_tf()
     workspace.run_benchmarks()
