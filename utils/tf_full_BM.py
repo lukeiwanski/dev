@@ -191,6 +191,8 @@ class Workspace(object):
         my_env["TF_NEED_OPENCL"] = "1"
         my_env["HOST_CXX_COMPILER"] = "/usr/bin/g++"
         my_env["HOST_C_COMPILER"] = "/usr/bin/gcc"
+        my_env["TF_VECTORIZE_SYCL"] = "1"
+
         my_env["COMPUTECPP_TOOLKIT_PATH"] = self.computecpp
 
         cmd = "bash configure yes"
