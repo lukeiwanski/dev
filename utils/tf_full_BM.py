@@ -162,8 +162,8 @@ class Workspace(object):
         fail_log_file_path = os.path.join(self.log,  "FAIL-" + log_modifier + ".log")
         pass_log_file_path = os.path.join(self.log, "PASS-" + log_modifier + ".log")
 
-        with open(pass_log_file_path, "a+") as pass_log_file, \
-            open(fail_log_file_path, "a+") as fail_log_file:
+        with open(pass_log_file_path, "w") as pass_log_file, \
+            open(fail_log_file_path, "w") as fail_log_file:
             p = subprocess.Popen(
                 cmd,
                 env=my_env,
