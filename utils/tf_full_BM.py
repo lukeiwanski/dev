@@ -228,17 +228,13 @@ class Workspace(object):
             + self.tf_build_options +
             "//tensorflow/tools/pip_package:build_pip_package"
         ).split()
-        #cmd += [
-        #    self.tf_build_options,
-        #    '//tensorflow/tools/pip_package:build_pip_package',
-        #]
 
         ret &= self.execute(cmd=cmd, log_modifier="tf_build", cwd=cwd, my_env=my_env)[0]
 
         if not ret:
             cmd = [
                 "bazel-bin/tensorflow/tools/pip_package/build_pip_package",
-                os.path.join(self.workspace, self.tmp, "/tensorflow_pkg"),
+                os.path.join(self.workspace, self.tmp, "tensorflow_pkg"),
             ]
             self.execute(cmd=cmd, log_modifier="tf_install", cwd=cwd, my_env=my_env)
 
@@ -246,9 +242,8 @@ class Workspace(object):
             cmd = ["pip", "uninstall", "tensorflow", "-y"]
             self.execute(cmd=cmd, log_modifier="tf_uninstall_pip", cwd=cwd, my_env=my_env)
 
-            cmd = ["pip", "install", "--user"] + glob.glob1(
-                os.path.join(self.workspace, self.tmp),
-                "tensorflow_pkg/tensorflow-*.whl"
+            cmd = ["pip", "install", "--user"] + glob.glob(
+                os.path.join(self.tmp, "tensorflow_pkg/tensorflow-*.whl")
             )
             ret = self.execute(cmd=cmd, log_modifier="tf_install_pip", cwd=cwd, my_env=my_env)[0]
             if ret:
@@ -280,7 +275,7 @@ class Workspace(object):
             n_benches = 10
             cmd = [
                 "python", "tf_cnn_benchmarks.py",
-                "--num_batches=" + n_benches,
+                "--num_batches=" + str(n_benches),
                 "--device=" + target,
                 "--batch_size=1",
                 "--forward_only=true",
