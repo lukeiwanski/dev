@@ -136,8 +136,8 @@ class Workspace(object):
             cwd=cwd,
             my_env=my_env
         )
+
         self.workspace_version = self.gen_version(compute_cpp_ver_string, self.tensorflow.hash)
-        #self.workspace_version = self.gen_version(compute_cpp_ver_string)
 
     def mkdir(self, path, delete = False):
         if os.path.exists(path):
@@ -285,7 +285,7 @@ class Workspace(object):
             if self.save_traces:
                 cmd += [
                     "--trace_file=" + os.path.join(
-                        self.workspace_version, file_name + ".json"
+                        self.tmp, self.workspace_version +"_"+ file_name + ".json"
                     )
                 ]
 
@@ -303,7 +303,11 @@ class Workspace(object):
                 "--data_format=NHWC",
             ]
             if self.save_traces:
-                cmd += ["--trace_file=" + "%s_%s.json" % (self.workspace_version, file_name)]
+                cmd += [
+                    "--trace_file=" + os.path.join(
+                        self.tmp, self.workspace_version +"_"+ file_name + ".json"
+                    )
+                ]
 
             self.execute(cmd=cmd, log_modifier=file_name, cwd=cwd, my_env=my_env)
 
