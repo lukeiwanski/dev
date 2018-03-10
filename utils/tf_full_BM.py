@@ -66,7 +66,8 @@ class Repo(object):
             ['git', 'fetch'],
             ['git', 'reset', '--hard', 'HEAD'],
             ['git', 'clean', '-dfx'],
-            ['git', 'pull', 'origin', self.branch],
+            ['git', 'checkout', self.branch],
+            ['git', 'pull'],
         ]
         for cmd in cmds:
             print(Colors.WARNING + ' ' +  ' '.join(cmd) + Colors.ENDC)
@@ -96,7 +97,7 @@ class Workspace(object):
         self.log = self.mkdir(os.path.join("log", now))
         self.save_traces = save_traces
 
-        if not os.path.exists(computecpp_root):
+        if not os.path.exists(os.path.join(computecpp_root, "bin")):
             url = COMPUTECPP_BASE_URL_TMPL.format(package_ver=package)
             self.computecpp = self.fetch(
                 url,
@@ -222,11 +223,9 @@ class Workspace(object):
         ret = self.execute(cmd=cmd, log_modifier="tf_configure", cwd=cwd, my_env=my_env)[0]
 
         cmd = (
-            "bazel build -c opt --copt=-msse4.1 --copt=-msse4.1 --copt=-mavx "
-            "--copt=-mavx2 --copt=-mfma --copt -Wno-unused-command-line-argument "
-            "--copt -Wno-duplicate-decl-specifier --config=sycl "
+            "bazel build -c opt --config=sycl "
             + self.tf_build_options +
-            "//tensorflow/tools/pip_package:build_pip_package"
+            " //tensorflow/tools/pip_package:build_pip_package"
         ).split()
 
         ret &= self.execute(cmd=cmd, log_modifier="tf_build", cwd=cwd, my_env=my_env)[0]
@@ -403,7 +402,7 @@ def main():
     parser.add_argument(
         "-t", "--tf_branch",
         dest="tf",
-        default="dev/amd_gpu",
+        default="experimental/amd_gpu",
         help="TensorFlow branch to use"
     )
     parser.add_argument(
