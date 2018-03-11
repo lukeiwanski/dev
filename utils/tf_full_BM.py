@@ -30,7 +30,7 @@ HTML_VIEW_TMPL = \
     <script src='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.js'></script>
     <div id='chart'></div>
     <script>
-    var chart = c3.generate({data:{x:'version',url:'%(CSV_FILE_PATH)s',type:'scatter'},tooltip:{grouped:false},bindto:'#chart',axis:{y:{show:true,max:100,min:0,ticks:5,padding:{top:1,bottom:0},},x:{type:'category'}}});
+    var chart = c3.generate({data:{x:'version',url:'%(CSV_FILE_PATH)s',type:'scatter'},tooltip:{grouped:false},bindto:'#chart',axis:{y:{show:true,min:0,ticks:5,padding:{top:1,bottom:0},},x:{type:'category'}}});
     </script>
 """
 
@@ -84,7 +84,8 @@ class Repo(object):
 
 class Workspace(object):
     def __init__(self, computecpp_root, workspace, tf_branch, benchmarks_branch,
-                 package, report, tf_build_options, webpage, save_traces):
+                 package, report, tf_build_options, webpage, save_traces,
+                 target):
         now = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
         self.tf_build_options = tf_build_options
         self.report = report
@@ -96,17 +97,19 @@ class Workspace(object):
         self.log = self.mkdir("log")
         self.log = self.mkdir(os.path.join("log", now))
         self.save_traces = save_traces
+        self.target = target
 
-        if not os.path.exists(os.path.join(computecpp_root, "bin")):
-            url = COMPUTECPP_BASE_URL_TMPL.format(package_ver=package)
-            self.computecpp = self.fetch(
-                url,
-                workspace=self.tmp,
-                directory="computecpp",
-            )
-            self.computecpp = os.path.join(self.computecpp, os.listdir(self.computecpp)[0])
-        else:
-            self.computecpp = computecpp_root
+        if "sycl" in self.target:
+            if not os.path.exists(os.path.join(computecpp_root, "bin")):
+                url = COMPUTECPP_BASE_URL_TMPL.format(package_ver=package)
+                self.computecpp = self.fetch(
+                    url,
+                    workspace=self.tmp,
+                    directory="computecpp",
+                )
+                self.computecpp = os.path.join(self.computecpp, os.listdir(self.computecpp)[0])
+            else:
+                self.computecpp = computecpp_root
 
         self.tensorflow = Repo(TF_UPSTREAM_REPO, tf_branch, self.tmp)
         self.benchmarks = Repo(TF_BENCHMARKS_REPO, benchmarks_branch, self.tmp)
@@ -119,10 +122,13 @@ class Workspace(object):
         generate a triple of hashes uniquely identifying computecpp version
         (clang, llvm)
         """
-        ret = ver_string.split(") (")
-        clang = ret[0].split(" ")[-1]
-        llvm = ret[1].split(" ")[-1]
-        return "%s-%s-%s" % (rep[:7], clang[:7], llvm[:7])
+        if "sycl" in self.target:
+            ret = ver_string.split(") (")
+            clang = ret[0].split(" ")[-1]
+            llvm = ret[1].split(" ")[-1]
+            return "%s-%s-%s" % (rep[:7], clang[:7], llvm[:7])
+        else:
+            return "%s-%s-%s" % (rep[:7], self.target, self.target)
 
     def setup(self):
         self.tensorflow.pull_git()
@@ -130,13 +136,15 @@ class Workspace(object):
         cwd = self.tmp
         my_env = os.environ
 
-        ver_cmd = [os.path.join(self.computecpp, 'bin', 'compute++'), "--version"]
-        ok, compute_cpp_ver_string = self.execute(
-            ver_cmd,
-            log_modifier="compiler_version_gen",
-            cwd=cwd,
-            my_env=my_env
-        )
+        compute_cpp_ver_string = "Unknown"
+        if "sycl" in self.target:
+            ver_cmd = [os.path.join(self.computecpp, 'bin', 'compute++'), "--version"]
+            ok, compute_cpp_ver_string = self.execute(
+                ver_cmd,
+                log_modifier="compiler_version_gen",
+                cwd=cwd,
+                my_env=my_env
+            )
 
         self.workspace_version = self.gen_version(compute_cpp_ver_string, self.tensorflow.hash)
 
@@ -208,6 +216,16 @@ class Workspace(object):
         return dest_path
 
     def build_install_tf(self):
+        if "gpu" in self.target or "cpu" in self.target:
+            cmd = ["pip", "uninstall", "tensorflow", "-y"]
+            ret = self.execute(cmd=cmd, log_modifier="gpu_pip_tf_uninstall", my_env=os.environ.copy())[0]
+            cmd = ["pip", "install", "--user", "tensorflow"]
+            ret = self.execute(cmd=cmd, log_modifier="gpu_pip_tf_install", my_env=os.environ.copy())[0]
+            if ret:
+                print(Colors.FAIL + "FAIL!" + Colors.ENDC)
+                sys.exit(1)
+            print(Colors.OKBLUE + "DONE!" + Colors.ENDC)
+            return
         print("Compiling and Installing TF")
         cwd = os.path.join(self.tmp, self.tensorflow.dirname)
         my_env = os.environ.copy()
@@ -259,17 +277,17 @@ class Workspace(object):
         print("Running TF benchmarks")
         cwd = os.path.join(self.tmp, self.benchmarks.dirname, 'scripts', 'tf_cnn_benchmarks')
         my_env = os.environ.copy()
-        my_env.update({
-            "LD_LIBRARY_PATH": os.path.join(self.computecpp, "lib"),
-            "TF_CPP_MIN_LOG_LEVEL": "2",
-        })
+        if "sycl" in self.target:
+            my_env.update({
+                "LD_LIBRARY_PATH": os.path.join(self.computecpp, "lib"),
+                })
 
-        models = ["trivial", "alexnet", "vgg16", "resnet50", "inception3"]
+        models = ["trivial", "alexnet", "vgg16", "resnet50", "inception3", "googlenet", "overfeat", "nasnet"]
         # using gpu device is more flexible here - node that suppose to be
         # accelerated on GPU will use SYCL device when aviable
-        targets = ["cpu", "gpu"]
+        targets = [self.target]
         for model, target in itertools.product(models, targets):
-            file_name = "%s_%s_inference_%s" % (self.ip, model, target)
+            file_name = "%s_%s_inference_%s" % (self.workspace_version, model, target)
             # inference
             n_benches = 10
             cmd = [
@@ -284,14 +302,14 @@ class Workspace(object):
             if self.save_traces:
                 cmd += [
                     "--trace_file=" + os.path.join(
-                        self.tmp, self.workspace_version +"_"+ file_name + ".json"
+                        self.tmp, file_name + ".json"
                     )
                 ]
 
             self.execute(cmd=cmd, log_modifier=file_name, cwd=cwd, my_env=my_env)
 
         for model, target in itertools.product(models, targets):
-            file_name = self.ip+"_"+model+"_training_"+target
+            file_name = "%s_%s_training_%s" % (self.workspace_version, model, target)
             # training
             cmd = [
                 "python", "tf_cnn_benchmarks.py",
@@ -304,14 +322,14 @@ class Workspace(object):
             if self.save_traces:
                 cmd += [
                     "--trace_file=" + os.path.join(
-                        self.tmp, self.workspace_version +"_"+ file_name + ".json"
+                        self.tmp, file_name + ".json"
                     )
                 ]
 
             self.execute(cmd=cmd, log_modifier=file_name, cwd=cwd, my_env=my_env)
 
     def gen_csv_based_on_log(self):
-        file_name = self.report
+        file_name = self.target+"_"+self.report
         file_exists = os.path.exists(file_name)
         with open(file_name, 'a+') as f:
             writer = csv.writer(f)
@@ -348,8 +366,8 @@ class Workspace(object):
                 writer.writerows([row])
 
     def gen_webpage(self):
-        filename = self.report
-        code = HTML_VIEW_TMPL % {'CSV_FILE_PATH': self.report}
+        filename = self.target+"_"+self.report
+        code = HTML_VIEW_TMPL % {'CSV_FILE_PATH': filename}
 
         # version
         a = [np.genfromtxt(filename, usecols=[0], delimiter=',', dtype=np.unicode_)]
@@ -361,22 +379,18 @@ class Workspace(object):
         )
         sort = b[:]
 
-        for x in range((len(b)) / 2):
-            m1 = sort[2 * x][1:]
+        for x in range((len(b))):
+            m1 = sort[x][1:]
             max1 = np.amax(np.asarray(m1, dtype=np.float32)) * 2
 
-            m2 = sort[2 * x + 1][1:]
-            max2 = np.amax(np.asarray(m2, dtype=np.float32)) * 2
-            max1 = np.maximum(max1, max2)
-
-            out = np.transpose(np.concatenate(([a[0]], [b[2 * x]], [b[2 * x + 1]]), axis=0))
+            out = np.transpose(np.concatenate(([a[0]], [b[x]]), axis=0))
             df = pd.DataFrame(out)
-            df.to_csv(str(x) + ".csv", header=None, index=False)
-            code += "<div id='c"+str(x)+"'></div><script>var chart = c3.generate({data:{x:'version',url:'"+str(x)+".csv',type:'line'},tooltip:{grouped:false},bindto:'#c"+str(x)+"',axis:{y: { show: true, max:"+str(max1)+", min:0, ticks : 5,padding: {top:1, bottom:0},}, x:{type:'category'}}});</script>"
+            df.to_csv(self.target+"_"+str(x) + ".csv", header=None, index=False)
+            code += "<div id='c"+self.target+"_"+str(x)+"'></div><script>var chart = c3.generate({data:{x:'version',url:'"+self.target+"_"+str(x)+".csv',type:'line'},tooltip:{grouped:false},bindto:'#c"+self.target+"_"+str(x)+"',axis:{y: { show: true, max:"+str(max1)+", min:0, ticks : 5,padding: {top:1, bottom:0},}, x:{type:'category'}}});</script>"
 
-        file_exists = os.path.exists(self.webpage)
+        file_exists = os.path.exists(self.target+"_"+self.webpage)
         if not file_exists:
-            with open(self.webpage, "w") as f:
+            with open(self.target+"_"+self.webpage, "w") as f:
                 f.write(code)
 
 def main():
@@ -400,7 +414,7 @@ def main():
        help="Where to create workspace"
     )
     parser.add_argument(
-        "-t", "--tf_branch",
+        "-n", "--tf_branch",
         dest="tf",
         default="experimental/amd_gpu",
         help="TensorFlow branch to use"
@@ -436,6 +450,13 @@ def main():
         help="If set to true traces will be generated"
     )
 
+    parser.add_argument(
+        "-t", "--target",
+        dest="target",
+        default="sycl",
+        help="Build TF for what target? (CPU, GPU, SYCL)"
+    )
+
     args = parser.parse_args()
 
     workspace = Workspace(
@@ -447,7 +468,8 @@ def main():
         report=args.report,
         tf_build_options=args.tf_build_options,
         webpage=args.webpage,
-        save_traces = args.save_traces,
+        save_traces=args.save_traces,
+        target=args.target,
     )
     workspace.setup()
     workspace.build_install_tf()
