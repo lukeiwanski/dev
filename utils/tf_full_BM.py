@@ -216,11 +216,21 @@ class Workspace(object):
         return dest_path
 
     def build_install_tf(self):
-        if "gpu" in self.target or "cpu" in self.target:
-            cmd = ["pip", "uninstall", "tensorflow", "-y"]
+        if "gpu" in self.target:
+            cmd = ["pip", "uninstall", "tensorflow-gpu", "-y"]
             ret = self.execute(cmd=cmd, log_modifier="gpu_pip_tf_uninstall", my_env=os.environ.copy())[0]
-            cmd = ["pip", "install", "--user", "tensorflow"]
+            cmd = ["pip", "install", "--user", "tensorflow-gpu"]
             ret = self.execute(cmd=cmd, log_modifier="gpu_pip_tf_install", my_env=os.environ.copy())[0]
+            if ret:
+                print(Colors.FAIL + "FAIL!" + Colors.ENDC)
+                sys.exit(1)
+            print(Colors.OKBLUE + "DONE!" + Colors.ENDC)
+            return
+        if "cpu" in self.target:
+            cmd = ["pip", "uninstall", "tensorflow", "-y"]
+            ret = self.execute(cmd=cmd, log_modifier="cpu_pip_tf_uninstall", my_env=os.environ.copy())[0]
+            cmd = ["pip", "install", "--user", "tensorflow"]
+            ret = self.execute(cmd=cmd, log_modifier="cpu_pip_tf_install", my_env=os.environ.copy())[0]
             if ret:
                 print(Colors.FAIL + "FAIL!" + Colors.ENDC)
                 sys.exit(1)
