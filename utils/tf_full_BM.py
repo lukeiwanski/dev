@@ -303,7 +303,7 @@ class Workspace(object):
             cmd = [
                 "python", "tf_cnn_benchmarks.py",
                 "--num_batches=" + str(n_benches),
-                "--device=" + target,
+                "--device=device:" + target.upper(),
                 "--batch_size=1",
                 "--forward_only=true",
                 "--model=" + model,
@@ -325,7 +325,7 @@ class Workspace(object):
                 "python", "tf_cnn_benchmarks.py",
                 "--batch_size=32",
                 "--num_batches=10",
-                "--device=" + target,
+                "--device=device:" + target.upper(),
                 "--model=" + model,
                 "--data_format=NHWC",
             ]
@@ -426,7 +426,7 @@ def main():
     parser.add_argument(
         "-n", "--tf_branch",
         dest="tf",
-        default="experimental/amd_gpu",
+        default="dev/amd_gpu",
         help="TensorFlow branch to use"
     )
     parser.add_argument(
